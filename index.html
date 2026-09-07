@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<!-- MLB Picks PWA: generated from webapp/index.html by the MLB
+     transform; edit the tennis app and re-run it rather than editing
+     this file. Data arrives as data.json on this repo's `data` branch. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MLB Picks</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0c1220">
+<style>
+  :root {
+    --bg: #0c1220; --card: #141d31; --line: #1f2b45;
+    --text: #e8ecf5; --dim: #94a3bd; --accent: #ff5d5d;
+    --green: #4ade80; --red: #f87171; --blue: #7dd3fc;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.45 -apple-system, "SF Pro Text", Helvetica, sans-serif;
+    padding: 0 0 env(safe-area-inset-bottom);
+  }
+  /* The header's own padding clears the status bar / Dynamic Island, so
+     its background fills that strip instead of content sliding under it. */
+  header {
+    position: sticky; top: 0; z-index: 5; background: var(--bg);
+    padding: calc(env(safe-area-inset-top) + 12px) 16px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  #ptr {
+    height: 0; overflow: hidden; display: flex; align-items: flex-end;
+    justify-content: center; color: var(--dim); font-size: 12px;
+    padding-bottom: 4px; transition: height .18s ease;
+  }
+  h1 { margin: 0 0 2px; font-size: 20px; }
+  .record { font-size: 16px; font-weight: 700; }
+  .record .pnl-pos { color: var(--green); }
+  .record .pnl-neg { color: var(--red); }
+  .sub, .scout { color: var(--dim); font-size: 12px; }
+  main { padding: 10px 12px 40px; max-width: 640px; margin: 0 auto; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+       color: var(--dim); margin: 18px 4px 8px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 10px;
+    scroll-margin-top: 120px;   /* clears the sticky header when linked to */
+  }
+  /* Medals: a real, unpriced edge the analyst found -- rare by design.
+     The badge shares a flex row with the matchup rather than floating
+     over it, so it cannot overlap however long the names run. */
+  .cardhead { display: flex; align-items: flex-start; gap: 10px; }
+  .cardhead .title { flex: 1; min-width: 0; }
+  .medal {
+    flex: 0 0 auto; font-size: 10px; margin-top: 2px;
+    font-weight: 800; letter-spacing: .04em; border-radius: 999px;
+    padding: 2px 8px; border: 1px solid; white-space: nowrap;
+  }
+  .medal-gold   { color: #f5c518; border-color: #f5c518;
+                  background: rgba(245,197,24,.12); }
+  .medal-silver { color: #c7cbd1; border-color: #c7cbd1;
+                  background: rgba(199,203,209,.12); }
+  .medal-bronze { color: #cd7f32; border-color: #cd7f32;
+                  background: rgba(205,127,50,.14); }
+  .medal-why {
+    border-left: 3px solid; border-radius: 6px; padding: 8px 10px;
+    margin: 8px 0; font-size: 13px; line-height: 1.45;
+  }
+  .medal-why .why-title { font-weight: 700; font-size: 11px;
+                          letter-spacing: .03em; margin-bottom: 3px; }
+  .medal-why ul { margin: 5px 0 0; padding-left: 17px; }
+  .medal-why li { font-size: 12px; color: var(--dim); margin: 2px 0; }
+  .card.flash {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(184,255,87,.25);
+    transition: border-color .3s, box-shadow .3s;
+  }
+  .meta { color: var(--dim); font-size: 12px; }
+  .title { font-weight: 800; font-size: 19px; line-height: 1.25;
+           margin: 0 0 3px; }
+  .ranks { font-size: 13px; font-weight: 600; color: var(--dim);
+           white-space: nowrap; }
+  .timing { font-size: 12px; font-weight: 700; margin: 1px 0 2px; }
+  .timing .prematch { color: var(--green); }
+  .timing .underway { color: #fbbf24; }
+  .timing .approx { color: var(--dim); font-weight: 600; }
+  .pickline { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+              margin-top: 6px; }
+  .pick { font-size: 19px; font-weight: 800; color: var(--green); }
+  .stake { color: var(--dim); font-weight: 600; }
+  .nums { font-size: 13px; color: var(--dim); margin: 3px 0 6px; }
+  .nums b { color: var(--text); }
+  .badge {
+    display: inline-block; font-size: 10px; font-weight: 800;
+    background: rgba(251,146,60,.2); color: #fdba74;
+    border-radius: 99px; padding: 1px 8px; vertical-align: 1px;
+  }
+  .h2h {
+    border-left: 3px solid var(--blue); background: rgba(125,211,252,.07);
+    border-radius: 6px; padding: 7px 10px; margin: 6px 0; font-size: 13px;
+  }
+  .h2h .rows { color: var(--dim); font-size: 12px; margin-top: 3px; }
+  .headline { font-weight: 600; margin: 6px 0; }
+  details { margin-top: 6px; }
+  summary { color: var(--blue); font-size: 13px; cursor: pointer; }
+  .analysis { font-size: 13px; color: var(--text); margin: 8px 0; }
+  .form-player { font-weight: 700; font-size: 13px; margin-top: 8px; }
+  .form-sum { color: var(--dim); font-size: 12px; }
+  table.form { border-collapse: collapse; margin: 4px 0; width: 100%; }
+  table.form td { font-size: 12px; padding: 1px 8px 1px 0; vertical-align: top;
+                  overflow-wrap: anywhere; }
+  /* Fixed layout only for the common-opponents table, so the left column
+     can't crush the results column on a phone. */
+  table.co { table-layout: fixed; }
+  table.co td.who { width: 38%; }
+  td.w { color: var(--green); font-weight: 700; }
+  td.l { color: var(--red); font-weight: 700; }
+  .note { color: var(--dim); }
+  .factor { font-size: 12px; margin: 3px 0; }
+  .tail { color: var(--dim); font-size: 12px; margin-top: 6px; }
+  .logline { font-size: 13px; font-weight: 700; margin: 0 4px 8px; }
+  .logfilter { display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+               margin: 0 4px 8px; font-size: 12px; color: var(--dim);
+               text-transform: none; letter-spacing: 0; }
+  .logfilter select {
+    background: var(--card); color: var(--text); font-size: 12px;
+    border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px;
+  }
+  .logrow {
+    display: flex; justify-content: space-between; gap: 10px;
+    padding: 8px 4px; border-bottom: 1px solid var(--line); font-size: 13px;
+  }
+  .logrow .who { flex: 1; min-width: 0; }
+  .logrow .sub2 { color: var(--dim); font-size: 12px; }
+  .res-w { color: var(--green); font-weight: 700; white-space: nowrap; }
+  .res-l { color: var(--red); font-weight: 700; white-space: nowrap; }
+  button.more {
+    display: block; margin: 14px auto; background: var(--card);
+    color: var(--blue); border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 22px; font-size: 14px;
+  }
+  .status { text-align: center; color: var(--dim); padding: 30px 20px; }
+  .pushrow { margin: 22px 4px 0; }
+  .pushrow button {
+    background: var(--card); color: var(--accent); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 16px; font-size: 14px;
+  }
+  .pushrow .msg { color: var(--dim); font-size: 12px; margin-top: 6px; }
+  .pushrow textarea {
+    width: 100%; height: 70px; margin-top: 8px; font-size: 10px;
+    background: var(--card); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 6px;
+  }
+</style>
+</head>
+<body>
+<div id="ptr"></div>
+<header>
+  <h1>MLB Picks</h1>
+  <div class="record" id="record">Loading…</div>
+  <div class="sub" id="updated"></div>
+  <div class="scout" id="scout"></div>
+  <div class="scout" id="agents"></div>
+</header>
+<main>
+  <div id="content"><div class="status">Fetching latest calls…</div></div>
+  <div class="pushrow" id="pushrow">
+    <button onclick="enablePush()">🔔 Enable notifications</button>
+    <div class="msg" id="pushmsg"></div>
+    <div id="pushout" style="display:none">
+      <textarea id="pushtext" readonly></textarea>
+      <button onclick="copySub()">Copy subscription</button>
+    </div>
+  </div>
+</main>
+<script>
+const DATA_URL =
+  "https://raw.githubusercontent.com/rbarbish/mlb-picks/data/data.json";
+const LOG_PAGE = 25;
+let logShown = LOG_PAGE;
+let logMedalOnly = false;
+let logMedalKind = "any";
+// In-play calls flatter the record, so they are out by default
+// (Ross, 2026-08-24).
+let excludeLive = localStorage.getItem("mlb:excludeLive") !== "0";
+
+function setExcludeLive(on) {
+  excludeLive = on;
+  localStorage.setItem("mlb:excludeLive", on ? "1" : "0");
+  render(lastPayload);
+}
+let lastPayload = null;
+
+const modelLabel = id => ({ "claude-fable-5-1": "Fable 5.1",
+  "claude-fable-5": "Fable 5",
+  "claude-opus-5": "Opus 5", "claude-sonnet-5": "Sonnet 5" }[id] || id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pct = v => v == null ? "?" : Math.round(v * 100) + "%";
+const cents = v => v == null ? "?" : Math.round(v * 100) + "¢";
+const money = v => (v >= 0 ? "+$" : "−$") + Math.abs(v).toFixed(2);
+
+function agoLine(iso) {
+  if (!iso) return "";
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso)) / 60000));
+  if (mins < 1) return "updated just now";
+  if (mins < 90) return "updated " + mins + "m ago";
+  return "updated " + (mins / 60).toFixed(1) + "h ago";
+}
+
+function h2hHtml(h) {
+  if (!h || !h.summary) return "";
+  const rows = (h.matches || []).map(m =>
+    `${esc(m.date || m.year || "")} · ${esc(m.tournament || "")}` +
+    `${m.surface ? " (" + esc(m.surface) + ")" : ""} — ` +
+    `${esc(m.winner || "")} ${esc(m.score || "")}`).join("<br>");
+  return `<div class="h2h"><b>H2H: ${esc(h.summary)}</b>` +
+         (rows ? `<div class="rows">${rows}</div>` : "") + `</div>`;
+}
+
+function formHtml(list) {
+  return (list || []).map(p => {
+    const rows = (p.matches || []).map(m =>
+      `<tr><td class="note">${esc(m.date || "")}</td>` +
+      `<td class="${m.result === "W" ? "w" : "l"}">${esc(m.result || "")}</td>` +
+      `<td>${esc(m.opponent || "")} ${esc(m.score || "")}` +
+      (m.note ? `<div class="note">${esc(m.note)}</div>` : "") +
+      `</td></tr>`).join("");
+    return `<div class="form-player">${esc(p.player || "")}</div>` +
+           (p.summary ? `<div class="form-sum">${esc(p.summary)}</div>` : "") +
+           (rows ? `<table class="form">${rows}</table>` : "");
+  }).join("");
+}
+
+function commonHtml(co) {
+  if (!co) return "";
+  const rows = (co.rows || []).map(r =>
+    `<tr><td class="who"><b>${esc(r.opponent || "")}</b></td>` +
+    `<td>${esc(r.a_result || "")}<br>${esc(r.b_result || "")}` +
+    (r.note ? `<div class="note">${esc(r.note)}</div>` : "") +
+    `</td></tr>`).join("");
+  return (co.summary ? `<div class="form-sum">${esc(co.summary)}</div>` : "") +
+    (rows ? `<table class="form co">${rows}</table>` : "");
+}
+
+const MEDAL_ICON = { gold: "\u{1F947}", silver: "\u{1F948}", bronze: "\u{1F949}" };
+
+function startsAt(m) {
+  // Prefer the scheduled start; older rows can be reconstructed from the
+  // call time and how far into the match it was made.
+  if (m.start) return new Date(m.start);
+  if (m.at && m.minutes_after_start != null)
+    return new Date(new Date(m.at).getTime() - m.minutes_after_start * 60000);
+  return null;
+}
+
+function timing(m) {
+  const at = startsAt(m);
+  if (!at || isNaN(at)) return "";
+  // Kalshi's listed time is a placeholder and has been a full day wrong;
+  // only an analyst-verified start earns a confident countdown.
+  const sure = m.start_source === "verified";
+  return '<span class="timing-live" data-start="' + at.toISOString() +
+         '" data-sure="' + (sure ? "1" : "0") + '">' +
+         timingText(at, sure) + "</span>";
+}
+
+function timingText(at, sure) {
+  const mins = Math.round((at - Date.now()) / 60000);
+  const span = (n) => n >= 60
+    ? Math.floor(n / 60) + "h " + (n % 60) + "m" : n + "m";
+  if (mins > 0) {
+    return sure
+      ? '<span class="prematch">starts in ' + span(mins) + "</span>"
+      : '<span class="prematch">starts in ~' + span(mins) +
+        '</span> <span class="approx">(listed time, unverified)</span>';
+  }
+  return sure
+    ? '<span class="underway">UNDER WAY · ' + span(-mins) + " in</span>"
+    : '<span class="approx">listed start passed ' + span(-mins) +
+      " ago — check the draw</span>";
+}
+
+setInterval(() => {
+  document.querySelectorAll(".timing-live").forEach((el) => {
+    const at = new Date(el.dataset.start);
+    if (!isNaN(at)) el.innerHTML = timingText(at, el.dataset.sure === "1");
+  });
+}, 30000);
+
+function titleWithRanks(m) {
+  const title = m.title || "";
+  const list = (m.ranks || []).filter((r) => r && r.rank);
+  if (!list.length) return esc(title);
+  // Put each rank straight after that player's name in the title, so a
+  // doubles line reads "Muhammad (#12) / Stollar (#31) vs ...".
+  const marks = [];
+  const used = new Set();
+  list.forEach((r) => {
+    // Match on a word boundary so short surnames ("Xu") are found and
+    // long ones cannot match inside another word.
+    const parts = String(r.player || "").split(/\s+/).filter(Boolean);
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const w = parts[i].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const hit = new RegExp("\\b" + w + "\\b", "i").exec(title);
+      if (hit && !used.has(hit.index)) {
+        used.add(hit.index);
+        marks.push({ end: hit.index + hit[0].length,
+                     rank: String(r.rank).replace(/^#?/, "#") });
+        break;
+      }
+    }
+  });
+  if (!marks.length) return esc(title);
+  marks.sort((a, b) => b.end - a.end);
+  let out = title;
+  marks.forEach((mk) => {
+    out = out.slice(0, mk.end) + "\u0001" + mk.rank + "\u0002" + out.slice(mk.end);
+  });
+  return esc(out).replace(/\u0001/g, ' <span class="ranks">(')
+                 .replace(/\u0002/g, ")</span>");
+}
+
+function medalBadge(m) {
+  const g = m.edge_grade;
+  return MEDAL_ICON[g]
+    ? `<span class="medal medal-${g}">${MEDAL_ICON[g]} ${g.toUpperCase()}</span>`
+    : "";
+}
+
+function medalWhy(m) {
+  const g = m.edge_grade;
+  if (!MEDAL_ICON[g] || !m.edge_summary) return "";
+  const items = (m.edge_factors || []).map(f =>
+    `<li>${esc(f.factor || "")}${f.detail ? ": " + esc(f.detail) : ""}</li>`
+  ).join("");
+  return `<div class="medal-why medal-${g}">` +
+    `<div class="why-title">${MEDAL_ICON[g]} ${g.toUpperCase()} BET REASONING SUMMARY</div>` +
+    esc(m.edge_summary) + (items ? `<ul>${items}</ul>` : "") + `</div>`;
+}
+
+function transitiveHtml(t) {
+  if (!t || (!t.summary && !(t.chains || []).length)) return "";
+  const pct = t.strength != null ? Math.round(t.strength * 100) : null;
+  const even = !t.edge || String(t.edge).toLowerCase() === "even";
+  const rows = (t.chains || []).map(c =>
+    `<tr><td class="who"><b>${esc(c.opponent || "")}</b>` +
+    (c.surface ? `<div class="note">${esc(c.surface)}</div>` : "") +
+    `</td><td>${esc(c.a_result || "")}<br>${esc(c.b_result || "")}` +
+    (c.note ? `<div class="note">${esc(c.note)}</div>` : "") +
+    `<div class="note">favours ${esc(c.favors || "?")}` +
+    (c.weight ? ` · ${esc(c.weight)}` : "") + `</div></td></tr>`).join("");
+  return `<div class="form-player">` +
+    (even ? "Chains are even" : `Edge: ${esc(t.edge)}`) +
+    (pct != null ? ` (${pct}%)` : "") + `</div>` +
+    (t.summary ? `<div class="form-sum">${esc(t.summary)}</div>` : "") +
+    (rows ? `<table class="form co">${rows}</table>` : "");
+}
+
+function cardHtml(m) {
+  const live = (m.live_bid != null || m.live_ask != null)
+    ? ` · now <b>${cents(m.live_bid)}/${cents(m.live_ask)}</b>` : "";
+  const conf = m.confidence != null
+    ? ` · conf <b>${pct(m.confidence)}</b>` : "";
+  const factors = (m.key_factors || []).map(f =>
+    `<div class="factor">• <b>${esc(f.factor || "")}</b>: ` +
+    `${esc(f.lean || "")}${f.note ? " — " + esc(f.note) : ""}</div>`).join("");
+  const common = commonHtml(m.common_opponents);
+  const trans = transitiveHtml(m.transitive);
+  const form = formHtml(m.recent_form);
+  const tail = m.tail_risk
+    ? `<div class="tail">Tail risk: ${esc(m.tail_risk)}</div>` : "";
+  // Mirrors the Mac tab: H2H pinned, headline and analysis in the open,
+  // then the same three foldouts in the same order.
+  const fold = (key, label, body) => body
+    ? `<details data-key="${key}-${esc(m.id)}"><summary>${label}</summary>` +
+      `${body}</details>` : "";
+  return `<div class="card" id="call-${esc(m.id)}">
+    <div class="cardhead">
+      <div class="title">${titleWithRanks(m)}</div>
+      ${medalBadge(m)}
+    </div>
+    ${timing(m) ? `<div class="timing">${timing(m)}</div>` : ""}
+    <div class="meta">${esc([m.tour, m.tournament, m.match_date,
+                             m.model ? modelLabel(m.model) +
+                               (m.effort ? " " + m.effort : "") : null]
+                            .filter(Boolean).join(" · "))}</div>
+    <div class="pickline"><span class="pick">PICK: ${esc(m.pick || "?")}</span>
+      <span class="stake">$${Math.round(m.stake || 0)}</span>
+      ${m.in_play ? '<span class="badge">IN PLAY</span>' : ""}</div>
+    <div class="nums">AI <b>${pct(m.prob)}</b> vs <b>${cents(m.price)}</b>${conf}${live}</div>
+    ${h2hHtml(m.h2h)}
+    ${medalWhy(m)}
+    ${m.headline ? `<div class="headline">${esc(m.headline)}</div>` : ""}
+    ${m.analysis ? `<div class="analysis">${esc(m.analysis)}</div>` : ""}
+    ${fold("tr", "transitive wins &amp; losses", trans)}
+    ${fold("co", "common opponents &amp; style matchups", common)}
+    ${fold("form", "recent form · last 5 matches", form)}
+    ${fold("fx", "factors &amp; tail risk", factors + tail)}
+  </div>`;
+}
+
+function logRowHtml(r) {
+  const won = r.won === 1;
+  const icon = MEDAL_ICON[r.edge_grade] ? MEDAL_ICON[r.edge_grade] + " " : "";
+  return `<div class="logrow"><div class="who">${icon}${esc(r.title || "")}
+      <div class="sub2">${esc(r.match_date || "")} · ${esc(r.pick || "")}
+        · AI ${pct(r.prob)} vs ${cents(r.price)}</div></div>
+    <div class="${won ? "res-w" : "res-l"}">${won ? "✓" : "✗"}
+      ${money(r.pnl || 0)}</div></div>`;
+}
+
+function render(p) {
+  const book = (excludeLive && p.log_prematch) ? p.log_prematch : p.log;
+  const rec = (book && book.record) || {graded: 0, wins: 0, pnl: 0};
+  document.getElementById("record").innerHTML = rec.graded
+    ? `${rec.wins}/${rec.graded} ${excludeLive ? "prematch " : ""}calls right · ` +
+      `<span class="${rec.pnl >= 0 ? "pnl-pos" : "pnl-neg"}">as-if ${money(rec.pnl)}</span>`
+    : "No graded calls yet";
+  document.getElementById("updated").textContent = agoLine(p.generated_at);
+  const s = (p.open && p.open.scout) || {};
+  const busy = (s.current_list && s.current_list.length)
+    ? s.current_list
+    : (s.current ? String(s.current).split(" + ") : []);
+  document.getElementById("agents").innerHTML = busy.map((t, i) =>
+    `<div>agent ${i + 1}: <b>${esc(t)}</b></div>`).join("");
+  document.getElementById("scout").textContent = [
+    s.phase === "analyzing"
+      ? "researching " + busy.length + (busy.length === 1 ? " match" : " matches")
+      : s.phase,
+    s.open_count != null
+      ? s.open_count + "/" + ((s.settings && s.settings.max_open) || 15) + " slots"
+      : null,
+    s.count_24h != null ? s.count_24h + " in 24h" : null,
+    s.model,
+    s.error ? "⚠ " + s.error : null,
+  ].filter(Boolean).join(" · ");
+
+  const openKeys = new Set([...document.querySelectorAll("details[open]")]
+    .map(d => d.dataset.key));
+  const matches = (p.open && p.open.matches) || [];
+  const all = ((book && book.rows) || []).filter(r => !logMedalOnly
+    ? true
+    : logMedalKind === "any"
+      ? !!MEDAL_ICON[r.edge_grade]
+      : r.edge_grade === logMedalKind);
+  const rows = all.slice(0, logShown);
+  const wins = rows.filter(r => r.won === 1).length;
+  const pnl = rows.reduce((a, r) => a + (r.pnl || 0), 0);
+  const total = (book && book.total) || 0;
+
+  document.getElementById("content").innerHTML =
+    `<h2>Open calls (${matches.length})</h2>` +
+    (matches.length ? matches.map(cardHtml).join("")
+      : `<div class="status">No open calls — settled ones are below.</div>`) +
+    `<h2>Call log (${total} settled)</h2>` +
+    `<div class="logfilter"><label><input type="checkbox" id="logExcludeLive"` +
+    `${excludeLive ? " checked" : ""}> exclude in-play calls</label>` +
+    `<label><input type="checkbox" id="logMedalOnly"` +
+    `${logMedalOnly ? " checked" : ""}> only medal picks</label>` +
+    `<select id="logMedalKind"${logMedalOnly ? "" : " disabled"}>` +
+    ["any::any medal", "gold::🥇 gold only", "silver::🥈 silver only",
+     "bronze::🥉 bronze only"].map(o => {
+       const [v, label] = o.split("::");
+       return `<option value="${v}"${v === logMedalKind ? " selected" : ""}>` +
+              `${label}</option>`;
+     }).join("") + `</select></div>` +
+    (rows.length
+      ? `<div class="logline">These ${rows.length}: ${wins}W/${rows.length - wins}L
+           · <span class="${pnl >= 0 ? "res-w" : "res-l"}">${money(pnl)}</span></div>` +
+        rows.map(logRowHtml).join("") +
+        (logShown < all.length
+          ? `<button class="more" onclick="logShown+=${LOG_PAGE};render(lastPayload)">Show more</button>` : "")
+      : `<div class="status">${logMedalOnly
+            ? "No settled medal picks yet — they are rare by design."
+            : "Nothing settled yet."}</div>`);
+  const live = document.getElementById("logExcludeLive");
+  if (live) live.onchange = (e) => { logShown = LOG_PAGE; setExcludeLive(e.target.checked); };
+  const only = document.getElementById("logMedalOnly");
+  if (only) only.onchange = (e) => {
+    logMedalOnly = e.target.checked; logShown = LOG_PAGE; render(lastPayload);
+  };
+  const kind = document.getElementById("logMedalKind");
+  if (kind) kind.onchange = (e) => {
+    logMedalKind = e.target.value; logShown = LOG_PAGE; render(lastPayload);
+  };
+  openKeys.forEach(k => {
+    const d = document.querySelector(`details[data-key="${k}"]`);
+    if (d) d.open = true;
+  });
+  if (pendingScroll != null && scrollToCall(pendingScroll)) pendingScroll = null;
+}
+
+// ---- Deep link from a tapped notification ----
+let pendingScroll = new URLSearchParams(location.search).get("call");
+
+function scrollToCall(id) {
+  const el = document.getElementById("call-" + id);
+  if (!el) return false;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  el.classList.add("flash");
+  setTimeout(() => el.classList.remove("flash"), 3000);
+  return true;
+}
+
+if ("serviceWorker" in navigator)
+  navigator.serviceWorker.addEventListener("message", (e) => {
+    const id = e.data && e.data.call;
+    if (id == null) return;
+    if (!scrollToCall(id)) { pendingScroll = id; refresh(); }
+  });
+
+async function refresh() {
+  try {
+    const r = await fetch(DATA_URL + "?t=" + Date.now(), {cache: "no-store"});
+    if (!r.ok) throw new Error(r.status);
+    lastPayload = await r.json();
+    render(lastPayload);
+  } catch (e) {
+    if (!lastPayload)
+      document.getElementById("content").innerHTML =
+        `<div class="status">Couldn’t fetch data (${esc(e.message)}).
+         The Mac server may not have published yet — pull down or retry
+         in a minute.</div>`;
+  }
+}
+
+// ---- Push notifications (iOS 16.4+, installed PWAs only) ----
+// Subscribes through Apple's Web Push service using the server's VAPID
+// key (shipped inside tennis.json), then hands the subscription to the
+// Mac by clipboard: copy here, paste into the MLB tab's "Web push"
+// box (Universal Clipboard carries it across devices).
+function vapidBytes(s) {
+  const b64 = (s + "=".repeat((4 - s.length % 4) % 4))
+    .replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+}
+
+async function enablePush() {
+  const msg = document.getElementById("pushmsg");
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      msg.textContent = "Not supported here — install first: Share → Add to " +
+        "Home Screen, then open from the icon.";
+      return;
+    }
+    if (!lastPayload || !lastPayload.vapid) {
+      msg.textContent = "Server key not published yet — try again in a few minutes.";
+      return;
+    }
+    const reg = await navigator.serviceWorker.register("sw.js");
+    await navigator.serviceWorker.ready;
+    if (await Notification.requestPermission() !== "granted") {
+      msg.textContent = "Notifications were denied.";
+      return;
+    }
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: vapidBytes(lastPayload.vapid),
+    });
+    document.getElementById("pushtext").value = JSON.stringify(sub);
+    document.getElementById("pushout").style.display = "block";
+    msg.textContent = "Copy this, then on the Mac paste it into the MLB " +
+      "tab’s “Web push” box and hit Register.";
+  } catch (e) {
+    msg.textContent = "Couldn’t subscribe: " + e.message +
+      (window.navigator.standalone ? "" :
+       " — install via Share → Add to Home Screen and open from the icon.");
+  }
+}
+
+function copySub() {
+  const t = document.getElementById("pushtext");
+  t.select();
+  navigator.clipboard.writeText(t.value).then(
+    () => { document.getElementById("pushmsg").textContent =
+      "Copied — now paste on the Mac (Tennis tab → Web push → Register)."; },
+    () => { document.getElementById("pushmsg").textContent =
+      "Copy failed — long-press the text and copy manually."; });
+}
+
+if ("serviceWorker" in navigator)
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+
+// ---- Pull to refresh (installed web apps get no native gesture) ----
+(function () {
+  const ptr = document.getElementById("ptr");
+  const TRIGGER = 62, MAX = 90;
+  let startY = null, pulling = false, busy = false;
+
+  addEventListener("touchstart", (e) => {
+    startY = (scrollY <= 0 && e.touches.length === 1)
+      ? e.touches[0].clientY : null;
+    pulling = false;
+  }, { passive: true });
+
+  addEventListener("touchmove", (e) => {
+    if (startY == null || busy) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy <= 0 || scrollY > 0) { ptr.style.height = "0px"; pulling = false; return; }
+    pulling = true;
+    const h = Math.min(dy * 0.5, MAX);
+    ptr.style.transition = "none";
+    ptr.style.height = h + "px";
+    ptr.textContent = h >= TRIGGER ? "Release to refresh" : "Pull to refresh";
+  }, { passive: true });
+
+  addEventListener("touchend", async () => {
+    const h = parseFloat(ptr.style.height) || 0;
+    startY = null;
+    ptr.style.transition = "";
+    if (!pulling || busy) { ptr.style.height = "0px"; return; }
+    pulling = false;
+    if (h >= TRIGGER) {
+      busy = true;
+      ptr.style.height = "34px";
+      ptr.textContent = "Refreshing…";
+      // Pull refreshes the DATA and checks for a new build of the app
+      // itself -- fetching tennis.json alone left Ross staring at a
+      // cached layout that a deploy had already fixed (2026-08-24).
+      await Promise.all([refresh(), checkForUpdate()]);
+      busy = false;
+    }
+    ptr.style.height = "0px";
+  }, { passive: true });
+})();
+
+// ---- Stay current ----
+// iOS caches an installed web app's HTML hard, so a fix can sit deployed
+// while the phone keeps showing yesterday's build (Ross, 2026-08-24 saw
+// exactly that). version.txt is written at deploy time from the file's
+// own hash; when it stops matching what this page was built as, reload.
+const APP_VERSION = "31aa354b2a4f";
+
+async function checkForUpdate() {
+  try {
+    const r = await fetch("version.txt?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) return;
+    const latest = (await r.text()).trim();
+    if (latest && APP_VERSION !== "__APP_VERSION__" && latest !== APP_VERSION) {
+      location.reload();
+    }
+  } catch (e) { /* offline: keep showing what we have */ }
+}
+
+checkForUpdate();
+setInterval(checkForUpdate, 300000);
+document.addEventListener("visibilitychange",
+  () => { if (!document.hidden) checkForUpdate(); });
+
+refresh();
+setInterval(refresh, 60000);
+document.addEventListener("visibilitychange",
+  () => { if (!document.hidden) refresh(); });
+</script>
+</body>
+</html>
